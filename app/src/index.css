@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-titulo: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-texto: "Manrope", system-ui, sans-serif;
+
+  --color-fundo: #f3f4f1;
+  --color-superficie: #ffffff;
+  --color-superficie-2: #eceee9;
+  --color-texto: #16181b;
+  --color-texto-secundario: #5e646c;
+  --color-borda: #e2e5e0;
+  --color-destaque: #3ddc84;
+  --color-erro: #c62828;
+}
+
+body {
+  margin: 0;
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-texto);
+}
