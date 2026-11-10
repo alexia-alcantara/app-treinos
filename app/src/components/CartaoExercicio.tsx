@@ -40,14 +40,23 @@ function descreverUltimaVez(ultimaVez: UltimaVez) {
   return `Última vez: ${ultimaVez.series.length} × ${quantidade}${comCarga}`;
 }
 
-function montarValoresIniciais(planejado: ExercicioPlanejado, ultimaVez: UltimaVez) {
+function montarValoresIniciais(
+  planejado: ExercicioPlanejado,
+  ultimaVez: UltimaVez,
+  seriesFeitasHoje: SerieRealizada[],
+) {
   const valores: Record<number, ValoresDaSerie> = {};
+  const ultimaSerieFeitaHoje = seriesFeitasHoje.at(-1);
 
   for (let numeroSerie = 1; numeroSerie <= planejado.series; numeroSerie++) {
-    const serieAnterior =
+    const mesmaSerieDaUltimaVez =
       ultimaVez.series.find((serie) => serie.numero_serie === numeroSerie) ?? ultimaVez.series.at(-1);
-    const carga = serieAnterior?.carga_kg ?? planejado.carga_kg;
-    const quantidade = ehPorTempo(planejado) ? planejado.duracao_segundos : planejado.repeticoes;
+    const referencia = ultimaSerieFeitaHoje ?? mesmaSerieDaUltimaVez;
+
+    const carga = referencia?.carga_kg ?? planejado.carga_kg;
+    const quantidade = ehPorTempo(planejado)
+      ? (referencia?.duracao_segundos ?? planejado.duracao_segundos)
+      : (referencia?.repeticoes ?? planejado.repeticoes);
 
     valores[numeroSerie] = {
       carga: carga?.toString() ?? '',
@@ -59,6 +68,7 @@ function montarValoresIniciais(planejado: ExercicioPlanejado, ultimaVez: UltimaV
 }
 
 export default function CartaoExercicio({ planejado, seriesFeitas, onRegistrarSerie }: Props) {
+  const [seriesFeitasAoAbrir] = useState(seriesFeitas);
   const [ultimaVez, setUltimaVez] = useState<UltimaVez | null>(null);
   const [valores, setValores] = useState<Record<number, ValoresDaSerie>>({});
   const [serieSalvando, setSerieSalvando] = useState<number | null>(null);
@@ -72,18 +82,36 @@ export default function CartaoExercicio({ planejado, seriesFeitas, onRegistrarSe
       })
       .then((ultimaVezRecebida) => {
         setUltimaVez(ultimaVezRecebida);
-        setValores(montarValoresIniciais(planejado, ultimaVezRecebida));
+        setValores(montarValoresIniciais(planejado, ultimaVezRecebida, seriesFeitasAoAbrir));
       });
-  }, [planejado]);
+  }, [planejado, seriesFeitasAoAbrir]);
 
   const totalDeLinhas = Math.max(planejado.series, seriesFeitas.length);
   const numerosDasSeries = Array.from({ length: totalDeLinhas }, (_, posicao) => posicao + 1);
 
   function alterarValor(numeroSerie: number, campo: keyof ValoresDaSerie, valor: string) {
-    setValores((anteriores) => ({
-      ...anteriores,
-      [numeroSerie]: { ...anteriores[numeroSerie], [campo]: valor },
-    }));
+    setValores((anteriores) => {
+      const linhaVazia: ValoresDaSerie = { carga: '', quantidade: '' };
+      const valorAnteriorDaLinha = anteriores[numeroSerie]?.[campo] ?? '';
+      const atualizados = {
+        ...anteriores,
+        [numeroSerie]: { ...(anteriores[numeroSerie] ?? linhaVazia), [campo]: valor },
+      };
+
+      for (const numeroSeguinte of numerosDasSeries) {
+        if (numeroSeguinte <= numeroSerie) continue;
+
+        const jaFoiFeita = seriesFeitas.some((serie) => serie.numero_serie === numeroSeguinte);
+        const valorDaSeguinte = anteriores[numeroSeguinte]?.[campo] ?? '';
+        const acompanhavaEstaLinha = valorDaSeguinte === '' || valorDaSeguinte === valorAnteriorDaLinha;
+
+        if (!jaFoiFeita && acompanhavaEstaLinha) {
+          atualizados[numeroSeguinte] = { ...(anteriores[numeroSeguinte] ?? linhaVazia), [campo]: valor };
+        }
+      }
+
+      return atualizados;
+    });
   }
 
   async function concluirSerie(numeroSerie: number) {

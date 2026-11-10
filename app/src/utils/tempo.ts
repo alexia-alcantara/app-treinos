@@ -6,3 +6,14 @@ export function formatarCronometro(totalDeSegundos: number) {
 
   return horas > 0 ? `${horas}:${minutosESegundos}` : minutosESegundos;
 }
+
+export function formatarDuracaoEmMinutos(totalDeMinutos: number) {
+  if (totalDeMinutos < 60) {
+    return `${totalDeMinutos} min`;
+  }
+
+  const horas = Math.floor(totalDeMinutos / 60);
+  const minutos = totalDeMinutos % 60;
+
+  return minutos === 0 ? `${horas}h` : `${horas}h ${minutos}min`;
+}

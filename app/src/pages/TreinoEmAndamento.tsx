@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import CartaoExercicio from '../components/CartaoExercicio';
 import CronometroDescanso from '../components/CronometroDescanso';
+import { useConfirmacao } from '../contexts/ConfirmacaoContext';
+import { useToast } from '../contexts/ToastContext';
 import { useAgora } from '../hooks/useAgora';
 import { requisitar } from '../services/api';
 import type { DadosDaSerie, ExercicioPlanejado, SerieRealizada, SessaoDetalhada } from '../types';
@@ -21,6 +23,8 @@ function encontrarPrimeiroExercicioPendente(sessao: SessaoDetalhada) {
 export default function TreinoEmAndamento() {
   const { sessaoId } = useParams();
   const navigate = useNavigate();
+  const { confirmar } = useConfirmacao();
+  const { mostrarToast } = useToast();
   const agora = useAgora(1000);
   const [sessao, setSessao] = useState<SessaoDetalhada | null>(null);
   const [posicaoAtual, setPosicaoAtual] = useState(0);
@@ -40,9 +44,10 @@ export default function TreinoEmAndamento() {
       })
       .catch((erro) => {
         console.error('Erro ao carregar sessão:', erro);
+        mostrarToast('Erro ao carregar treino', 'erro');
         navigate('/', { replace: true });
       });
-  }, [sessaoId, navigate]);
+  }, [sessaoId, navigate, mostrarToast]);
 
   if (!sessao?.treino) {
     return <p className="p-5 text-texto-secundario">Carregando treino…</p>;
@@ -85,17 +90,30 @@ export default function TreinoEmAndamento() {
       (planejado) => contarSeriesFeitas(sessao!, planejado) < planejado.series,
     );
 
-    if (temSeriePendente && !window.confirm('Ainda tem séries sem marcar. Finalizar mesmo assim?')) {
-      return;
-    }
+    const confirmou = await confirmar(
+      temSeriePendente
+        ? {
+            titulo: 'Finalizar treino?',
+            mensagem: 'Ainda tem séries sem marcar. Elas não vão entrar no histórico.',
+            textoConfirmar: 'Finalizar mesmo assim',
+          }
+        : {
+            titulo: 'Finalizar treino?',
+            textoConfirmar: 'Finalizar',
+          },
+    );
+
+    if (!confirmou) return;
 
     setFinalizando(true);
 
     try {
       await requisitar(`/sessoes/${sessaoId}/finalizar`, { method: 'PATCH' });
+      mostrarToast('Treino finalizado');
       navigate('/', { replace: true });
     } catch (erro) {
       console.error('Erro ao finalizar treino:', erro);
+      mostrarToast('Erro ao finalizar treino', 'erro');
       setFinalizando(false);
     }
   }
@@ -112,12 +130,22 @@ export default function TreinoEmAndamento() {
             <polyline points="15 6 9 12 15 18" />
           </svg>
         </Link>
-        <span className="font-titulo text-[22px] font-bold">
-          Treino {treino.letra} — {treino.nome}
-        </span>
-        <span className="w-11 text-right text-sm text-texto-secundario tabular-nums">
-          {formatarCronometro(segundosDeTreino)}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-col items-center">
+          <span className="truncate font-titulo text-[22px] leading-tight font-bold">
+            Treino {treino.letra} — {treino.nome}
+          </span>
+          <span className="text-sm whitespace-nowrap text-texto-secundario tabular-nums">
+            {formatarCronometro(segundosDeTreino)}
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled={finalizando}
+          onClick={finalizarTreino}
+          className="h-11 rounded-xl bg-superficie px-3 text-sm font-bold shadow-sm disabled:opacity-60"
+        >
+          Finalizar
+        </button>
       </header>
 
       <div className="flex flex-col gap-1.5">
