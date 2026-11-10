@@ -68,3 +68,15 @@ export type DadosDaSerie = {
   repeticoes?: number;
   duracao_segundos?: number;
 };
+
+export type ExercicioResumo = {
+  id: number;
+  nome: string;
+  grupo_muscular: string | null;
+  tem_historico: boolean;
+};
+
+export type PontoDeEvolucao = {
+  dia: string;
+  carga_maxima: number;
+};
