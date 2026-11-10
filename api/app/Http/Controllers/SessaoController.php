@@ -101,19 +101,42 @@ class SessaoController extends Controller
         return response()->json($serie, 201);
     }
 
-    public function finalizar(Sessao $sessao): JsonResponse
+     public function finalizar(Request $request, Sessao $sessao): JsonResponse
     {
         if ($sessao->user_id !== $this->usuarioAtual()->id) {
             return response()->json(['erro' => 'Sessão não encontrada'], 404);
         }
-
+ 
         if ($sessao->finalizada_em !== null) {
             return response()->json(['erro' => 'Sessão já finalizada'], 409);
         }
-
-        $sessao->update(['finalizada_em' => now()]);
-
+ 
+        $dados = $request->validate([
+            'na_ultima_serie' => ['sometimes', 'boolean'],
+        ]);
+ 
+        $finalizadaEm = ($dados['na_ultima_serie'] ?? false)
+            ? ($sessao->seriesRealizadas()->max('concluida_em') ?? $sessao->iniciada_em)
+            : now();
+ 
+        $sessao->update(['finalizada_em' => $finalizadaEm]);
+ 
         return response()->json($sessao->load('seriesRealizadas'));
+    }
+ 
+    public function descartar(Sessao $sessao): JsonResponse
+    {
+        if ($sessao->user_id !== $this->usuarioAtual()->id) {
+            return response()->json(['erro' => 'Sessão não encontrada'], 404);
+        }
+ 
+        if ($sessao->finalizada_em !== null) {
+            return response()->json(['erro' => 'Sessão já finalizada'], 409);
+        }
+ 
+        $sessao->delete();
+ 
+        return response()->json(null, 204);
     }
 
     private function carregarDetalhes(Sessao $sessao): Sessao

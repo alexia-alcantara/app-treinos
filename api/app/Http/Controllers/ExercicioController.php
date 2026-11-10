@@ -7,6 +7,18 @@ use Illuminate\Http\JsonResponse;
 
 class ExercicioController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        $exercicios = $this->usuarioAtual()
+            ->exercicios()
+            ->select('id', 'nome', 'grupo_muscular')
+            ->withExists('seriesRealizadas as tem_historico')
+            ->orderBy('nome')
+            ->get();
+
+        return response()->json($exercicios);
+    }
+
     public function ultimaVez(Exercicio $exercicio): JsonResponse
     {
         if ($exercicio->user_id !== $this->usuarioAtual()->id) {

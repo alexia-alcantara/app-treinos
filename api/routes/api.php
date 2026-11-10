@@ -22,7 +22,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sessoes', [SessaoController::class, 'iniciar']);
     Route::post('/sessoes/{sessao}/series', [SessaoController::class, 'registrarSerie']);
     Route::patch('/sessoes/{sessao}/finalizar', [SessaoController::class, 'finalizar']);
+    Route::delete('/sessoes/{sessao}', [SessaoController::class, 'descartar'])->whereNumber('sessao');
 
+    Route::get('/exercicios', [ExercicioController::class, 'index']);
     Route::get('/exercicios/{exercicio}/ultima-vez', [ExercicioController::class, 'ultimaVez']);
     Route::get('/exercicios/{exercicio}/evolucao', [ExercicioController::class, 'evolucao']);
 });
